@@ -49,7 +49,7 @@ public:
     // Control (message/UI thread only).
     bool start();                                   // returns false on device error
     void stop();
-    bool setAudioDevice(const juce::String& deviceName);
+    bool setAudioDevice(const std::string& deviceName);
     bool setBufferSize(int numSamples);
 
     // Device enumeration (message/UI thread only).

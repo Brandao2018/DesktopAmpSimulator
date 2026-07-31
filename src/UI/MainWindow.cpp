@@ -176,7 +176,7 @@ void MainWindow::onStartStopClicked()
 void MainWindow::onDeviceSelected(int index)
 {
     const QString name = deviceSelector_->itemText(index);
-    if (audioEngine_->setAudioDevice(name))
+    if (audioEngine_->setAudioDevice(name.toStdString()))
         showStatus(tr("Switched to: %1").arg(name));
     else
         showStatus(QString::fromStdString(audioEngine_->getLastError()), true);

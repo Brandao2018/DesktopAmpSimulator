@@ -104,11 +104,12 @@ void AudioEngine::stop()
     ampsim::Logger::info("Audio stopped");
 }
 
-bool AudioEngine::setAudioDevice(const juce::String& deviceName)
+bool AudioEngine::setAudioDevice(const std::string& deviceName)
 {
+    const juce::String name(deviceName);
     auto setup = deviceManager.getAudioDeviceSetup();
-    setup.inputDeviceName = deviceName;
-    setup.outputDeviceName = deviceName;
+    setup.inputDeviceName = name;
+    setup.outputDeviceName = name;
     setup.useDefaultInputChannels = true;
     setup.useDefaultOutputChannels = true;
 
