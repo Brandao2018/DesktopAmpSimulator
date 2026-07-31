@@ -1,0 +1,46 @@
+/* Dark theme — clean, low-contrast studio look. */
+
+QMainWindow, QWidget {
+    background-color: #1e1e22;
+    color: #d8d8dc;
+    font-size: 12px;
+}
+
+QGroupBox {
+    border: 1px solid #34343a;
+    border-radius: 6px;
+    margin-top: 10px;
+    padding-top: 8px;
+    font-weight: bold;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 4px;
+    color: #9a9aa2;
+}
+
+QPushButton {
+    background-color: #2d2d34;
+    border: 1px solid #44444c;
+    border-radius: 5px;
+    padding: 6px 18px;
+}
+
+QPushButton:hover  { background-color: #37373f; }
+QPushButton:pressed { background-color: #26262c; }
+
+QComboBox {
+    background-color: #2d2d34;
+    border: 1px solid #44444c;
+    border-radius: 4px;
+    padding: 3px 8px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #2d2d34;
+    selection-background-color: #3d5a80;
+}
+
+QLabel { background: transparent; }

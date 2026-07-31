@@ -1,0 +1,510 @@
+# Desktop Guitar Amp Simulator — Phase 1 Build Prompt
+
+## Project Overview
+
+Build a **cross-platform desktop guitar amp simulator** (Windows/Linux/macOS) targeting home studio musicians and hobbyists. Standalone app + future plugin support (VST3/AU).
+
+**Pricing Model:** Free tier (2–3 amp models) → €29.99 Pro license (unlock all features) → €3.99–14.99 add-on packs (artist tones, cabinet IRs, effect packs).
+
+**Technology Stack:**
+- **Audio Engine:** JUCE framework (real-time DSP, ASIO/WASAPI/Core Audio/ALSA)
+- **UI:** Qt 5 or Qt 6 (cross-platform native widgets)
+- **Build System:** CMake 3.16+
+- **Platform Support:** Windows (ASIO/WASAPI), Linux (ALSA/PulseAudio/JACK), macOS (Core Audio, Intel + ARM)
+- **CI/CD:** GitHub Actions (build + release automation)
+- **Version Control:** Git + GitHub
+
+---
+
+## Phase 1 Deliverable (Weeks 1–4): Foundation & I/O Plumbing
+
+**Goal:** Compile and run a working audio I/O app on all three platforms. No amp models yet—just prove the pipeline works.
+
+### Core Requirements
+
+1. **CMake Build System**
+   - Single CMakeLists.txt that builds on Windows/Linux/macOS
+   - Auto-download JUCE and Qt dependencies (vcpkg or Conan optional, but nice)
+   - Configurable for Debug/Release builds
+   - Platform-specific linker flags (ASIO SDK for Windows, CoreAudio for macOS, ALSA for Linux)
+
+2. **JUCE Audio I/O (Standalone)**
+   - Inherit from `juce::AudioAppComponent`
+   - Accept audio input via system audio device
+   - Output unchanged audio (pass-through, no processing)
+   - Configurable sample rate (44.1–192 kHz)
+   - Buffer size options (64, 128, 256, 512 samples)
+   - Display actual I/O latency (roundtrip, in milliseconds)
+
+3. **Qt5/Qt6 UI**
+   - Single main window with:
+     - Input level meter (stereo, dB scale, -∞ to +6 dB)
+     - Output level meter (same)
+     - Sample rate readout (current device rate)
+     - Buffer size display
+     - Latency display (ms, measured at startup)
+     - Audio device selector (dropdown, shows available devices)
+     - Start/Stop button (toggle audio processing)
+     - Status label (connected, running, error messages)
+   - No knobs or amp models yet—just meters and info display
+   - Qt signals/slots thread-safe communication with JUCE audio thread
+
+4. **JUCE ↔ Qt Thread Safety**
+   - Audio thread (JUCE) runs independently at real-time priority
+   - Qt UI thread polls/displays meters without blocking audio
+   - Atomic variables for meter values (peak hold, RMS)
+   - No mutex locks on audio thread (lock-free design where possible)
+
+5. **GitHub Actions CI/CD**
+   - Workflow file: `.github/workflows/build.yml`
+   - Matrix build: Windows (MSVC), Linux (GCC/Clang), macOS (Clang, Intel + arm64)
+   - Each platform compiles standalone executable
+   - Artifact upload to GitHub Releases (beta version)
+   - Build status badge in README
+
+6. **Documentation**
+   - `README.md`: Project overview, feature roadmap, pricing (future)
+   - `BUILDING.md`: Detailed build instructions per OS
+     - Windows: MSVC 2019+, download ASIO SDK, link flags
+     - Linux: apt/dnf install deps, JACK optional setup
+     - macOS: Xcode 12+, deployment target 10.11+ (Intel), 11.0+ (ARM)
+   - `DEVELOPMENT.md`: Architecture overview, JUCE + Qt integration, audio thread model
+   - `LICENSE`: MIT or GPL v3 (your choice)
+
+---
+
+## Project Structure
+
+```
+DesktopAmpSimulator/
+├── CMakeLists.txt                      # Root CMake config
+├── README.md                           # Project overview + quick start
+├── BUILDING.md                         # Per-OS build instructions
+├── DEVELOPMENT.md                      # Architecture guide
+├── LICENSE                             # MIT/GPL3
+│
+├── .github/
+│   └── workflows/
+│       └── build.yml                   # GitHub Actions CI/CD
+│
+├── src/
+│   ├── CMakeLists.txt                  # Source-level CMake
+│   │
+│   ├── Audio/
+│   │   ├── CMakeLists.txt
+│   │   ├── AudioEngine.h               # JUCE AudioAppComponent subclass
+│   │   └── AudioEngine.cpp
+│   │
+│   ├── UI/
+│   │   ├── CMakeLists.txt
+│   │   ├── MainWindow.h                # Qt QMainWindow subclass
+│   │   ├── MainWindow.cpp
+│   │   ├── MeterWidget.h               # Custom stereo meter widget
+│   │   ├── MeterWidget.cpp
+│   │   └── StyleSheet.css              # Dark theme, clean design
+│   │
+│   ├── Shared/
+│   │   ├── CMakeLists.txt
+│   │   ├── Constants.h                 # Global constants, enum definitions
+│   │   ├── ThreadSafeBuffer.h          # Lock-free meter data exchange
+│   │   └── Logger.h                    # Logging utility (file + console)
+│   │
+│   └── Main.cpp                        # Entry point (Qt/JUCE init)
+│
+├── tests/
+│   ├── CMakeLists.txt
+│   ├── AudioEngineTests.cpp            # Unit tests (catch2 framework)
+│   └── MeterTests.cpp
+│
+├── resources/
+│   ├── CMakeLists.txt
+│   └── icons/
+│       ├── AppIcon.png
+│       └── MeterBackground.png
+│
+└── conan/
+    └── conanfile.txt (optional)        # Dependency management (vcpkg alt)
+```
+
+---
+
+## Technical Specifications
+
+### Audio Engine (JUCE)
+
+```cpp
+// AudioEngine.h
+class AudioEngine : public juce::AudioAppComponent
+{
+public:
+    AudioEngine();
+    ~AudioEngine() override;
+
+    void prepareToPlay(int samplesPerBlockExpected, double sampleRate) override;
+    void getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill) override;
+    void releaseResources() override;
+
+    // Meter data (lock-free, read by UI thread)
+    float getInputLevelL() const;     // dB, updated every block
+    float getInputLevelR() const;
+    float getOutputLevelL() const;
+    float getOutputLevelR() const;
+    double getCurrentSampleRate() const;
+    int getCurrentBufferSize() const;
+    float getMeasuredLatency() const;  // ms, measured at startup
+
+    // Settings (thread-safe setters for UI thread)
+    void setAudioDevice(const juce::String& deviceName);
+    void setBufferSize(int numSamples);
+
+private:
+    // Real-time audio processing (lock-free)
+    std::atomic<float> inputLevelL_{-120.0f};
+    std::atomic<float> inputLevelR_{-120.0f};
+    std::atomic<float> outputLevelL_{-120.0f};
+    std::atomic<float> outputLevelR_{-120.0f};
+    std::atomic<float> measuredLatency_{0.0f};
+    
+    // Meter calculations
+    void updateMeters(const juce::AudioBuffer<float>& buffer);
+};
+```
+
+**Requirements:**
+- Pass-through audio (no processing, just input → output)
+- Measure input/output levels in dB (peak + RMS, 10ms smoothing)
+- Measure roundtrip latency at startup via loopback test (play 1kHz chirp, measure delay)
+- Support device hot-plugging (device list updates if USB audio interface plugged in)
+- Graceful handling of device unavailability (show error, allow retry)
+
+### UI Layer (Qt)
+
+```cpp
+// MainWindow.h
+class MainWindow : public QMainWindow
+{
+    Q_OBJECT
+
+public:
+    MainWindow(AudioEngine* engine);
+    ~MainWindow() override;
+
+private slots:
+    void updateMeters();              // Timer-driven UI refresh (~30 Hz)
+    void onStartStopClicked();
+    void onDeviceSelected(int index);
+    void onAudioError(const QString& msg);
+
+private:
+    AudioEngine* audioEngine_;
+    MeterWidget* inputMeter_;
+    MeterWidget* outputMeter_;
+    QComboBox* deviceSelector_;
+    QPushButton* startStopBtn_;
+    QLabel* statusLabel_;
+    QLabel* latencyLabel_;
+    QTimer* updateTimer_;
+    
+    void setupUI();
+    void connectSignals();
+};
+```
+
+**Requirements:**
+- Native look-and-feel per OS (Qt handles this automatically)
+- Responsive meters (update 30 Hz, no lag)
+- Dark theme by default (light theme optional in settings)
+- Window size ~600×400px, resizable, remembers position
+- Accessibility: tab navigation, screen reader support where Qt provides it
+
+### Thread Safety
+
+**JUCE Audio Thread (real-time, no blocking):**
+- Processes audio in `getNextAudioBlock()` (~10–50ms cycle)
+- Updates atomic meter values
+- **Never** locks mutexes, allocates memory, or calls Qt
+
+**Qt Main Thread:**
+- Timer fires every 33ms (30 Hz UI refresh)
+- Reads atomic meter values
+- Updates UI elements (labels, meters)
+- **Never** modifies audio buffer or parameters directly
+
+**Handshake:** AudioEngine exposes `std::atomic<float>` members. Qt reads them lock-free.
+
+---
+
+## Build Instructions (in BUILDING.md)
+
+### Windows (MSVC 2019+, ASIO)
+
+```bash
+git clone https://github.com/yourusername/DesktopAmpSimulator.git
+cd DesktopAmpSimulator
+
+# Install dependencies
+vcpkg install juce:x64-windows qt:x64-windows
+
+# Build
+mkdir build && cd build
+cmake -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake \
+      -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . --config Release
+
+# Run
+./bin/DesktopAmpSimulator.exe
+```
+
+### Linux (Ubuntu 20.04+)
+
+```bash
+# Install deps
+sudo apt install build-essential cmake git
+sudo apt install qt5-qmake qt5-default libqt5gui5 libqt5core5a
+sudo apt install libjack-jackd2-dev libasound2-dev
+
+# Build
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake --build .
+
+# Run
+./bin/DesktopAmpSimulator
+```
+
+### macOS (Xcode 12+)
+
+```bash
+# Install deps
+brew install cmake qt5 juce
+
+# Build
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11 ..
+cmake --build .
+
+# Run
+./bin/DesktopAmpSimulator.app/Contents/MacOS/DesktopAmpSimulator
+```
+
+---
+
+## GitHub Actions Workflow
+
+**`.github/workflows/build.yml`**
+
+```yaml
+name: Cross-Platform Build
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        include:
+          - os: windows-latest
+            artifact: DesktopAmpSimulator.exe
+            build_type: Release
+          - os: ubuntu-latest
+            artifact: DesktopAmpSimulator
+            build_type: Release
+          - os: macos-latest
+            artifact: DesktopAmpSimulator.app
+            build_type: Release
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          vcpkg install juce:x64-windows qt:x64-windows
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt update
+          sudo apt install -y qt5-qmake qt5-default libjack-jackd2-dev libasound2-dev
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install qt5
+
+      - name: Create build directory
+        run: mkdir build
+
+      - name: Configure CMake
+        run: |
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ..
+
+      - name: Build
+        run: |
+          cd build
+          cmake --build . --config ${{ matrix.build_type }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ runner.os }}-build
+          path: build/bin/${{ matrix.artifact }}
+```
+
+---
+
+## Testing Strategy
+
+### Unit Tests (Catch2)
+
+```cpp
+// tests/AudioEngineTests.cpp
+#include <catch2/catch.hpp>
+#include "Audio/AudioEngine.h"
+
+TEST_CASE("AudioEngine passes audio through unchanged", "[audio]") {
+    AudioEngine engine;
+    engine.prepareToPlay(256, 48000.0);
+    
+    // Create test signal (1kHz sine)
+    juce::AudioBuffer<float> input(2, 256);
+    juce::AudioBuffer<float> output(2, 256);
+    
+    // Generate sine wave on input
+    for (int i = 0; i < 256; ++i) {
+        float phase = (2.0f * 3.14159f * 1000.0f * i) / 48000.0f;
+        input.setSample(0, i, sinf(phase));
+        input.setSample(1, i, sinf(phase));
+    }
+    
+    // Process
+    // ... (simulate getNextAudioBlock)
+    
+    // Verify output matches input
+    for (int i = 0; i < 256; ++i) {
+        REQUIRE(output.getSample(0, i) == Approx(input.getSample(0, i)).margin(0.001f));
+    }
+}
+```
+
+### Integration Tests
+
+1. **Compile & Run:** Verify app starts on each OS without crashes
+2. **Audio Device:** App detects ≥1 audio device
+3. **Audio Flow:** Play audio in (USB mic/loopback), hear it on speakers/headphones
+4. **Latency:** Measured latency is <20ms (acceptable for guitar)
+5. **Meters:** Input/output meters respond to audio in real time
+
+---
+
+## Deliverables Checklist
+
+### Code
+- [x] CMakeLists.txt (root + subdirs)
+- [x] AudioEngine (JUCE, pass-through, meters, latency measurement)
+- [x] MainWindow (Qt, UI layout, thread-safe meter update)
+- [x] MeterWidget (custom stereo level indicator)
+- [x] Constants.h, Logger.h, ThreadSafeBuffer.h (shared utilities)
+- [x] Main.cpp (Qt/JUCE initialization)
+- [x] Unit tests (audio pass-through, meter calculations)
+- [x] GitHub Actions workflow (.yml)
+
+### Documentation
+- [x] README.md (project overview, features, roadmap, pricing teaser)
+- [x] BUILDING.md (step-by-step per OS)
+- [x] DEVELOPMENT.md (architecture, thread model, how to extend)
+- [x] LICENSE (MIT or GPL3)
+- [x] CHANGELOG.md (version history)
+
+### Artifacts
+- [x] Standalone executables for Windows/Linux/macOS (from CI)
+- [x] All source code committed to GitHub
+- [x] Tags: `v0.1.0-alpha` (Phase 1 milestone)
+
+---
+
+## Constraints & Assumptions
+
+### Constraints
+1. **Audio latency must be <20ms** (roundtrip, including system). If OS-level latency is >15ms, acceptable—we measure and display it.
+2. **No external plugin dependencies.** JUCE and Qt are the only frameworks.
+3. **Code must compile with warnings=errors** (clean build, no warnings).
+4. **All paths must be relative** (no hardcoded `C:\Users\You\...`).
+5. **No commercial/proprietary audio libraries.** Only open-source or JUCE built-ins.
+
+### Assumptions
+1. **Target OS versions:**
+   - Windows 10+, MSVC 2019+
+   - Ubuntu 20.04+, GCC 9+
+   - macOS 10.11+, Xcode 12+
+2. **Audio formats:** 32-bit float, mono/stereo, 44.1–192 kHz
+3. **User has audio interface** (e.g., Focusrite, MOTU, or built-in soundcard). No loopback audio by default.
+4. **Qt5 or Qt6 acceptable** (autodetect in CMake)
+5. **JUCE source downloaded** (vcpkg or manual; CMake handles it)
+
+---
+
+## Success Criteria (Phase 1 Complete)
+
+✅ App builds cleanly on Windows, Linux, macOS  
+✅ App starts without crashes  
+✅ Audio device enumeration works  
+✅ Audio passes through unchanged (verified by loopback test)  
+✅ Input/output meters update in real time (responsive, no lag)  
+✅ Latency measurement displays correctly (<20ms expected)  
+✅ GitHub Actions CI builds all platforms automatically on push  
+✅ All code is documented (comments + DEVELOPMENT.md)  
+✅ README + BUILDING.md are clear and accurate  
+✅ Unit tests pass on all platforms  
+
+---
+
+## Timeline
+
+**Week 1:** CMake setup, JUCE + Qt integration, project structure  
+**Week 2:** AudioEngine (I/O, meters, latency measurement)  
+**Week 3:** Qt UI (MainWindow, MeterWidget, device selector)  
+**Week 4:** Testing, CI/CD, documentation, GitHub release (v0.1.0-alpha)
+
+---
+
+## Next Phases (After Phase 1)
+
+Once Phase 1 is solid:
+- **Phase 2 (Weeks 5–8):** Amp models (tube saturation, tone stacks)
+- **Phase 3 (Weeks 9–12):** Cabinet IR convolver, basic effects
+- **Phase 4 (Weeks 13–16):** Parallel routing, looper
+- **Phase 5 (Weeks 17–20):** VST3/AU wrappers, installers
+- **Phase 6 (Weeks 21–24):** Polish, testing, launch
+
+---
+
+## Questions / Clarifications for You
+
+Before starting:
+
+1. **Qt Version Preference?** (Qt5 or Qt6? We auto-detect, but state preference)
+2. **Windows ASIO SDK:** Do you have it? (Free download from Steinberg)
+3. **GitHub username/repo name?** (For workflow artifact uploads)
+4. **License preference?** (MIT = permissive; GPL3 = copyleft; recommend MIT for commercial potential)
+5. **Deployment target for macOS?** (10.11 = broad, 11.0 = recent Macs only; recommend 10.11)
+
+---
+
+## Let's Build 🚀
+
+Ready for Claude Code to start? Copy this entire prompt into Claude Code with the instruction:
+
+> **"Build Phase 1 of the desktop amp simulator following this specification. Start with CMake + JUCE setup, then AudioEngine (pass-through, meters, latency), then Qt UI. Provide all source files, CMakeLists.txt, GitHub Actions workflow, and documentation. Compile and run on your Linux system to verify. Then provide full source tree ready to push to GitHub."**
+
+---
+
+**End of Prompt.**
