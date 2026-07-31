@@ -18,7 +18,7 @@
 3. Build:
 
 ```powershell
-git clone https://github.com/YOURUSERNAME/DesktopAmpSimulator.git
+git clone https://github.com/Brandao2018/DesktopAmpSimulator.git
 cd DesktopAmpSimulator
 
 cmake -B build -DCMAKE_BUILD_TYPE=Release `
@@ -56,7 +56,7 @@ sudo apt install -y build-essential cmake git \
 # On Ubuntu 20.04 (no qt6-base-dev), use Qt5 instead:
 #   sudo apt install -y qtbase5-dev
 
-git clone https://github.com/YOURUSERNAME/DesktopAmpSimulator.git
+git clone https://github.com/Brandao2018/DesktopAmpSimulator.git
 cd DesktopAmpSimulator
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel
@@ -75,7 +75,7 @@ latency; JUCE will offer JACK devices in the device selector when running.
 xcode-select --install          # command-line tools, if not already present
 brew install cmake qt
 
-git clone https://github.com/YOURUSERNAME/DesktopAmpSimulator.git
+git clone https://github.com/Brandao2018/DesktopAmpSimulator.git
 cd DesktopAmpSimulator
 cmake -B build -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_PREFIX_PATH="$(brew --prefix qt)"

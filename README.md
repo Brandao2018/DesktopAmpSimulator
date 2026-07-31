@@ -1,6 +1,6 @@
 # Desktop Amp Simulator
 
-![Build](https://github.com/YOURUSERNAME/DesktopAmpSimulator/actions/workflows/build.yml/badge.svg)
+![Build](https://github.com/Brandao2018/DesktopAmpSimulator/actions/workflows/build.yml/badge.svg)
 
 A **cross-platform desktop guitar amp simulator** for home studio musicians and
 hobbyists. Windows, Linux, and macOS (Intel + Apple Silicon). Standalone app
@@ -26,7 +26,7 @@ today; VST3/AU plugin support planned.
 ## Quick Start
 
 ```bash
-git clone https://github.com/YOURUSERNAME/DesktopAmpSimulator.git
+git clone https://github.com/Brandao2018/DesktopAmpSimulator.git
 cd DesktopAmpSimulator
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release
