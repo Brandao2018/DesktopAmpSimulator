@@ -8,11 +8,16 @@ class QPushButton;
 class QTimer;
 
 class AudioEngine;
+class KnobWidget;
 class MeterWidget;
 
-// Main application window. Owns nothing audio-related; it reads the engine's
-// lock-free meter atomics on a 30 Hz timer and forwards user actions
-// (start/stop, device / buffer-size selection) to the engine on the UI thread.
+// Main application window, styled after classic studio/pedalboard software:
+// a top toolbar (device, buffer, readouts), a "board" area holding the rack
+// meters (pedals arrive in Phase 2), and an amp panel with rotary knobs and
+// a round power switch.
+//
+// It reads the engine's lock-free meter atomics on a 30 Hz timer and forwards
+// user actions to the engine on the UI thread.
 
 class MainWindow : public QMainWindow
 {
@@ -24,7 +29,7 @@ public:
 
 private slots:
     void updateMeters();                // timer-driven UI refresh (~30 Hz)
-    void onStartStopClicked();
+    void onPowerToggled(bool on);
     void onDeviceSelected(int index);
     void onBufferSizeSelected(int index);
 
@@ -43,10 +48,11 @@ private:
     MeterWidget* outputMeter_;
     QComboBox*   deviceSelector_;
     QComboBox*   bufferSizeSelector_;
-    QPushButton* startStopBtn_;
+    KnobWidget*  gainKnob_;
+    KnobWidget*  volumeKnob_;
+    QPushButton* powerBtn_;
     QLabel*      statusLabel_;
     QLabel*      sampleRateLabel_;
-    QLabel*      bufferSizeLabel_;
     QLabel*      latencyLabel_;
     QTimer*      updateTimer_;
 };

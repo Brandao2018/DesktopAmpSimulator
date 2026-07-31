@@ -46,6 +46,13 @@ public:
     float  getMeasuredLatency() const   { return meters_.latencyMs.load(std::memory_order_acquire); }
     bool   isRunning() const            { return meters_.running.load(std::memory_order_acquire); }
 
+    // Processing parameters (any thread; the audio thread reads atomics).
+    // Gain = input trim before processing, Volume = output level. Both in dB.
+    void setGainDb(float db)   { gainDb_.store(db, std::memory_order_release); }
+    void setVolumeDb(float db) { volumeDb_.store(db, std::memory_order_release); }
+    float getGainDb() const    { return gainDb_.load(std::memory_order_acquire); }
+    float getVolumeDb() const  { return volumeDb_.load(std::memory_order_acquire); }
+
     // Control (message/UI thread only).
     bool start();                                   // returns false on device error
     void stop();
@@ -73,6 +80,9 @@ private:
     float smoothedPeak_[2][2] { { ampsim::kMeterFloorDb, ampsim::kMeterFloorDb },
                                 { ampsim::kMeterFloorDb, ampsim::kMeterFloorDb } };
     float smoothingCoeff_ = 0.0f;
+
+    std::atomic<float> gainDb_   { 0.0f };
+    std::atomic<float> volumeDb_ { 0.0f };
 
     std::atomic<bool> deviceListChanged_ { false };
 

@@ -45,6 +45,7 @@ set_source_files_properties(
     Audio/AudioEngine.cpp
     UI/MainWindow.cpp
     UI/MeterWidget.cpp
+    UI/KnobWidget.cpp
     PROPERTIES COMPILE_OPTIONS "${AMPSIM_WARNING_FLAGS}")
 
 # GUI app (no console window on Windows, .app bundle on macOS)

@@ -58,6 +58,24 @@ TEST_CASE("Pass-through preserves silence", "[audio]")
         REQUIRE(sample == 0.0f);
 }
 
+TEST_CASE("applyGain scales samples by the expected linear factor", "[audio]")
+{
+    std::vector<float> samples(kNumSamples, 0.5f);
+    std::array<float*, 1> channels { samples.data() };
+
+    // +6.02 dB ≈ factor of 2.
+    ampsim::applyGain(channels.data(), 1, kNumSamples, ampsim::dbToGain(6.0206f));
+
+    for (float sample : samples)
+        REQUIRE(sample == Catch::Approx(1.0f).margin(0.001f));
+}
+
+TEST_CASE("dbToGain and gainToDb are inverse operations", "[audio]")
+{
+    for (float db : { -24.0f, -6.0f, 0.0f, 6.0f, 24.0f })
+        REQUIRE(ampsim::gainToDb(ampsim::dbToGain(db)) == Catch::Approx(db).margin(0.01f));
+}
+
 TEST_CASE("Full-scale sine has expected peak and RMS", "[audio]")
 {
     // Use a whole number of cycles so RMS is exact.

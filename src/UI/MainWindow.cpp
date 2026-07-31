@@ -2,17 +2,19 @@
 
 #include <QCloseEvent>
 #include <QComboBox>
-#include <QFormLayout>
-#include <QGroupBox>
+#include <QFrame>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
 #include <QSettings>
 #include <QSignalBlocker>
+#include <QStyle>
 #include <QTimer>
 #include <QVBoxLayout>
 
 #include "Audio/AudioEngine.h"
 #include "Shared/Constants.h"
+#include "UI/KnobWidget.h"
 #include "UI/MeterWidget.h"
 
 MainWindow::MainWindow(AudioEngine* engine, QWidget* parent)
@@ -22,10 +24,11 @@ MainWindow::MainWindow(AudioEngine* engine, QWidget* parent)
       outputMeter_(nullptr),
       deviceSelector_(nullptr),
       bufferSizeSelector_(nullptr),
-      startStopBtn_(nullptr),
+      gainKnob_(nullptr),
+      volumeKnob_(nullptr),
+      powerBtn_(nullptr),
       statusLabel_(nullptr),
       sampleRateLabel_(nullptr),
-      bufferSizeLabel_(nullptr),
       latencyLabel_(nullptr),
       updateTimer_(nullptr)
 {
@@ -33,76 +36,145 @@ MainWindow::MainWindow(AudioEngine* engine, QWidget* parent)
     connectSignals();
     refreshDeviceList();
     restoreWindowGeometry();
-    showStatus(tr("Ready — press Start to begin audio."));
+    showStatus(tr("Ready — hit the power switch."));
 }
 
 MainWindow::~MainWindow() = default;
 
 void MainWindow::setupUI()
 {
-    setWindowTitle(tr("Desktop Amp Simulator — Phase 1"));
-    resize(600, 400);
+    setWindowTitle(tr("Desktop Amp Simulator"));
+    resize(760, 560);
 
     auto* central = new QWidget(this);
+    central->setObjectName(QStringLiteral("studioBackground"));
     auto* layout = new QVBoxLayout(central);
+    layout->setContentsMargins(14, 12, 14, 12);
+    layout->setSpacing(10);
 
-    inputMeter_ = new MeterWidget(tr("Input"), central);
-    outputMeter_ = new MeterWidget(tr("Output"), central);
+    // --- Top toolbar: branding + device settings + readouts -----------------
+    auto* toolbar = new QFrame(central);
+    toolbar->setObjectName(QStringLiteral("toolbar"));
+    auto* toolbarLayout = new QHBoxLayout(toolbar);
+    toolbarLayout->setContentsMargins(14, 8, 14, 8);
 
-    auto* inputGroup = new QGroupBox(tr("Input"), central);
-    auto* inputLayout = new QVBoxLayout(inputGroup);
-    inputLayout->addWidget(inputMeter_);
+    auto* brand = new QLabel(tr("Desktop <b>Amp</b> Simulator"), toolbar);
+    brand->setObjectName(QStringLiteral("brand"));
 
-    auto* outputGroup = new QGroupBox(tr("Output"), central);
-    auto* outputLayout = new QVBoxLayout(outputGroup);
-    outputLayout->addWidget(outputMeter_);
-
-    auto* settingsGroup = new QGroupBox(tr("Audio Device"), central);
-    auto* form = new QFormLayout(settingsGroup);
-
-    deviceSelector_ = new QComboBox(settingsGroup);
+    deviceSelector_ = new QComboBox(toolbar);
     deviceSelector_->setAccessibleName(tr("Audio device"));
-    form->addRow(tr("Device:"), deviceSelector_);
+    deviceSelector_->setMinimumWidth(200);
 
-    bufferSizeSelector_ = new QComboBox(settingsGroup);
+    bufferSizeSelector_ = new QComboBox(toolbar);
     bufferSizeSelector_->setAccessibleName(tr("Buffer size"));
     for (int size : ampsim::kBufferSizes)
-        bufferSizeSelector_->addItem(QString::number(size), size);
+        bufferSizeSelector_->addItem(tr("%1 smp").arg(size), size);
     bufferSizeSelector_->setCurrentIndex(2);   // 256 by default
-    form->addRow(tr("Buffer size:"), bufferSizeSelector_);
 
-    sampleRateLabel_ = new QLabel(tr("—"), settingsGroup);
-    form->addRow(tr("Sample rate:"), sampleRateLabel_);
+    sampleRateLabel_ = new QLabel(tr("— Hz"), toolbar);
+    sampleRateLabel_->setObjectName(QStringLiteral("readout"));
+    latencyLabel_ = new QLabel(tr("— ms"), toolbar);
+    latencyLabel_->setObjectName(QStringLiteral("readout"));
 
-    bufferSizeLabel_ = new QLabel(tr("—"), settingsGroup);
-    form->addRow(tr("Actual buffer:"), bufferSizeLabel_);
+    toolbarLayout->addWidget(brand);
+    toolbarLayout->addStretch();
+    toolbarLayout->addWidget(new QLabel(tr("Device"), toolbar));
+    toolbarLayout->addWidget(deviceSelector_);
+    toolbarLayout->addWidget(new QLabel(tr("Buffer"), toolbar));
+    toolbarLayout->addWidget(bufferSizeSelector_);
+    toolbarLayout->addWidget(sampleRateLabel_);
+    toolbarLayout->addWidget(latencyLabel_);
 
-    latencyLabel_ = new QLabel(tr("—"), settingsGroup);
-    form->addRow(tr("Roundtrip latency:"), latencyLabel_);
+    // --- Board area: rack meters now, pedals in Phase 2 ---------------------
+    auto* board = new QFrame(central);
+    board->setObjectName(QStringLiteral("board"));
+    auto* boardLayout = new QVBoxLayout(board);
+    boardLayout->setContentsMargins(18, 14, 18, 14);
+    boardLayout->setSpacing(10);
 
-    startStopBtn_ = new QPushButton(tr("Start"), central);
-    startStopBtn_->setMinimumHeight(36);
+    auto* inputRack = new QFrame(board);
+    inputRack->setObjectName(QStringLiteral("rackModule"));
+    auto* inputRackLayout = new QVBoxLayout(inputRack);
+    auto* inputTitle = new QLabel(tr("INPUT"), inputRack);
+    inputTitle->setObjectName(QStringLiteral("rackTitle"));
+    inputMeter_ = new MeterWidget(tr("Input"), inputRack);
+    inputRackLayout->addWidget(inputTitle);
+    inputRackLayout->addWidget(inputMeter_);
 
+    auto* outputRack = new QFrame(board);
+    outputRack->setObjectName(QStringLiteral("rackModule"));
+    auto* outputRackLayout = new QVBoxLayout(outputRack);
+    auto* outputTitle = new QLabel(tr("OUTPUT"), outputRack);
+    outputTitle->setObjectName(QStringLiteral("rackTitle"));
+    outputMeter_ = new MeterWidget(tr("Output"), outputRack);
+    outputRackLayout->addWidget(outputTitle);
+    outputRackLayout->addWidget(outputMeter_);
+
+    auto* pedalSlot = new QLabel(tr("Pedalboard — amp models and effects arrive in Phase 2"), board);
+    pedalSlot->setObjectName(QStringLiteral("pedalSlot"));
+    pedalSlot->setAlignment(Qt::AlignCenter);
+    pedalSlot->setMinimumHeight(72);
+
+    boardLayout->addWidget(inputRack);
+    boardLayout->addWidget(pedalSlot, 1);
+    boardLayout->addWidget(outputRack);
+
+    // --- Amp panel: knobs + power switch ------------------------------------
+    auto* ampPanel = new QFrame(central);
+    ampPanel->setObjectName(QStringLiteral("ampPanel"));
+    auto* ampLayout = new QHBoxLayout(ampPanel);
+    ampLayout->setContentsMargins(22, 10, 22, 10);
+    ampLayout->setSpacing(18);
+
+    auto* logo = new QLabel(tr("<i>Dream</i>"), ampPanel);
+    logo->setObjectName(QStringLiteral("ampLogo"));
+
+    gainKnob_ = new KnobWidget(tr("Gain"), -24.0f, 24.0f, 0.0f, tr("dB"), ampPanel);
+    volumeKnob_ = new KnobWidget(tr("Volume"), -60.0f, 6.0f, 0.0f, tr("dB"), ampPanel);
+
+    powerBtn_ = new QPushButton(ampPanel);
+    powerBtn_->setObjectName(QStringLiteral("powerBtn"));
+    powerBtn_->setCheckable(true);
+    powerBtn_->setFixedSize(46, 46);
+    powerBtn_->setAccessibleName(tr("Power"));
+    powerBtn_->setToolTip(tr("Power on/off"));
+
+    auto* powerLabel = new QLabel(tr("ON"), ampPanel);
+    powerLabel->setObjectName(QStringLiteral("powerLabel"));
+
+    ampLayout->addWidget(logo);
+    ampLayout->addStretch();
+    ampLayout->addWidget(gainKnob_);
+    ampLayout->addWidget(volumeKnob_);
+    ampLayout->addStretch();
+    ampLayout->addWidget(powerLabel);
+    ampLayout->addWidget(powerBtn_);
+
+    // --- Status line --------------------------------------------------------
     statusLabel_ = new QLabel(central);
+    statusLabel_->setObjectName(QStringLiteral("statusLabel"));
     statusLabel_->setWordWrap(true);
 
-    layout->addWidget(inputGroup);
-    layout->addWidget(outputGroup);
-    layout->addWidget(settingsGroup);
-    layout->addWidget(startStopBtn_);
+    layout->addWidget(toolbar);
+    layout->addWidget(board, 1);
+    layout->addWidget(ampPanel);
     layout->addWidget(statusLabel_);
-    layout->addStretch();
 
     setCentralWidget(central);
 }
 
 void MainWindow::connectSignals()
 {
-    connect(startStopBtn_, &QPushButton::clicked, this, &MainWindow::onStartStopClicked);
+    connect(powerBtn_, &QPushButton::toggled, this, &MainWindow::onPowerToggled);
     connect(deviceSelector_, qOverload<int>(&QComboBox::activated),
             this, &MainWindow::onDeviceSelected);
     connect(bufferSizeSelector_, qOverload<int>(&QComboBox::activated),
             this, &MainWindow::onBufferSizeSelected);
+
+    connect(gainKnob_, &KnobWidget::valueChanged,
+            this, [this](float db) { audioEngine_->setGainDb(db); });
+    connect(volumeKnob_, &KnobWidget::valueChanged,
+            this, [this](float db) { audioEngine_->setVolumeDb(db); });
 
     updateTimer_ = new QTimer(this);
     updateTimer_->setInterval(ampsim::kUiRefreshMs);
@@ -125,7 +197,7 @@ void MainWindow::refreshDeviceList()
         deviceSelector_->setCurrentIndex(idx);
 
     if (names.empty())
-        showStatus(tr("No audio devices found. Connect an interface and restart audio."), true);
+        showStatus(tr("No audio devices found. Connect an interface and power on again."), true);
 }
 
 void MainWindow::updateMeters()
@@ -137,38 +209,37 @@ void MainWindow::updateMeters()
                             audioEngine_->getOutputLevelR());
 
     const double rate = audioEngine_->getCurrentSampleRate();
-    sampleRateLabel_->setText(rate > 0.0 ? tr("%1 Hz").arg(rate, 0, 'f', 0) : tr("—"));
-
-    const int buffer = audioEngine_->getCurrentBufferSize();
-    bufferSizeLabel_->setText(buffer > 0 ? tr("%1 samples").arg(buffer) : tr("—"));
+    sampleRateLabel_->setText(rate > 0.0 ? tr("%1 kHz").arg(rate / 1000.0, 0, 'f', 1)
+                                         : tr("— Hz"));
 
     const float latency = audioEngine_->getMeasuredLatency();
-    latencyLabel_->setText(latency > 0.0f ? tr("%1 ms").arg(latency, 0, 'f', 1) : tr("—"));
+    latencyLabel_->setText(latency > 0.0f ? tr("%1 ms").arg(latency, 0, 'f', 1)
+                                          : tr("— ms"));
 
     // Hot-plug: refresh the device list when the OS reports a change.
     if (audioEngine_->consumeDeviceListChanged())
         refreshDeviceList();
 }
 
-void MainWindow::onStartStopClicked()
+void MainWindow::onPowerToggled(bool on)
 {
-    if (audioEngine_->isRunning())
+    if (!on)
     {
         audioEngine_->stop();
-        startStopBtn_->setText(tr("Start"));
-        showStatus(tr("Stopped."));
+        showStatus(tr("Powered off."));
         return;
     }
 
     if (audioEngine_->start())
     {
-        startStopBtn_->setText(tr("Stop"));
         showStatus(tr("Running on: %1")
                        .arg(QString::fromStdString(audioEngine_->getCurrentDeviceName())));
         refreshDeviceList();
     }
     else
     {
+        const QSignalBlocker blocker(powerBtn_);
+        powerBtn_->setChecked(false);
         showStatus(QString::fromStdString(audioEngine_->getLastError()), true);
     }
 }
@@ -194,8 +265,9 @@ void MainWindow::onBufferSizeSelected(int index)
 void MainWindow::showStatus(const QString& message, bool isError)
 {
     statusLabel_->setText(message);
-    statusLabel_->setStyleSheet(isError ? QStringLiteral("color: #e65a50;")
-                                        : QString());
+    statusLabel_->setProperty("error", isError);
+    statusLabel_->style()->unpolish(statusLabel_);
+    statusLabel_->style()->polish(statusLabel_);
 }
 
 void MainWindow::restoreWindowGeometry()

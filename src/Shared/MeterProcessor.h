@@ -63,6 +63,20 @@ namespace ampsim
         return incoming + coeff * (previous - incoming);
     }
 
+    // Convert dB to linear gain.
+    inline float dbToGain(float db) noexcept
+    {
+        return std::pow(10.0f, db / 20.0f);
+    }
+
+    // Apply a linear gain to all channels in place.
+    inline void applyGain(float* const* channels, int numChannels, int numSamples, float gain) noexcept
+    {
+        for (int ch = 0; ch < numChannels; ++ch)
+            for (int i = 0; i < numSamples; ++i)
+                channels[ch][i] *= gain;
+    }
+
     // Phase 1 "processing": pass audio through unchanged. Exists as an
     // explicit function so the pipeline shape is already in place for the
     // amp models of Phase 2, and so tests can verify transparency.

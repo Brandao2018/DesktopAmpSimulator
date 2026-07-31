@@ -52,9 +52,17 @@ void AudioEngine::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferTo
         meter.store(smoothedPeak_[0][ch], rmsDb);
     }
 
-    // Phase 1: pass-through (input stays in the buffer, unchanged).
-    ampsim::processPassThrough(buffer.getArrayOfWritePointers(),
-                               numChannels, bufferToFill.numSamples);
+    // Phase 1 chain: input trim (Gain) -> pass-through -> output level (Volume).
+    float* channels[ampsim::kNumChannels] = {};
+    for (int ch = 0; ch < numChannels; ++ch)
+        channels[ch] = buffer.getWritePointer(ch, bufferToFill.startSample);
+    const float gain = ampsim::dbToGain(gainDb_.load(std::memory_order_acquire));
+    ampsim::applyGain(channels, numChannels, bufferToFill.numSamples, gain);
+
+    ampsim::processPassThrough(channels, numChannels, bufferToFill.numSamples);
+
+    const float volume = ampsim::dbToGain(volumeDb_.load(std::memory_order_acquire));
+    ampsim::applyGain(channels, numChannels, bufferToFill.numSamples, volume);
 
     // Output meters (identical to input in Phase 1, but measured separately
     // so the pipeline is honest once processing exists).
