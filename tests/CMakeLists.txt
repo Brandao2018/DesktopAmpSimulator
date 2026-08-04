@@ -7,7 +7,9 @@ FetchContent_MakeAvailable(Catch2)
 
 add_executable(AmpSimTests
     AudioEngineTests.cpp
-    MeterTests.cpp)
+    MeterTests.cpp
+    AmpModelTests.cpp
+    EffectsTests.cpp)
 
 target_include_directories(AmpSimTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(AmpSimTests PRIVATE Catch2::Catch2WithMain)

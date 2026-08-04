@@ -10,6 +10,7 @@ target_sources(DesktopAmpSimulator PRIVATE
 add_subdirectory(Audio)
 add_subdirectory(UI)
 add_subdirectory(Shared)
+add_subdirectory(DSP)
 
 target_include_directories(DesktopAmpSimulator PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -44,8 +45,13 @@ set_source_files_properties(
     Main.cpp
     Audio/AudioEngine.cpp
     UI/MainWindow.cpp
-    UI/MeterWidget.cpp
-    UI/KnobWidget.cpp
+    UI/Widgets/CustomKnob.cpp
+    UI/Widgets/LevelMeter.cpp
+    UI/Sections/AmpSection.cpp
+    UI/Sections/CabinetSection.cpp
+    UI/Sections/EffectsSection.cpp
+    UI/Sections/MasterSection.cpp
+    UI/Panels/PresetPanel.cpp
     PROPERTIES COMPILE_OPTIONS "${AMPSIM_WARNING_FLAGS}")
 
 # GUI app (no console window on Windows, .app bundle on macOS)

@@ -1,0 +1,95 @@
+Build Phase 1 of the desktop guitar amp simulator with PROFESSIONAL UI design.
+
+Visual reference: STL Tonality / S-Gear 2 professional dark theme interface.
+
+Generate ALL files as specified in the attached prompt, organized as shown in the project structure:
+
+**UI Components to Build:**
+1. CustomKnob widget (rotary slider, labeled, draggable, mouse wheel)
+2. Professional LevelMeter (stereo, dB scale, clip indicator)
+3. AmpSection (3x3 knob grid + tube selectors + amp model dropdown)
+4. CabinetSection (up to 4 cabinet slots, each with mic/position dropdowns and level/pan/angle knobs)
+5. EffectsSection (4 effect slots, each with type/name selectors + parameter knobs)
+6. MasterSection (input/output meters, master volume, noise gate, transpose)
+7. PresetPanel (dock widget, bank/preset list, search, save/load buttons)
+8. MainWindow (orchestrates all sections, scroll area, status bar)
+
+**Styling:**
+- Dark professional theme (charcoal #282828 background, orange accents #dc6428, white text #ffffff)
+- Qt stylesheet with QGroupBox, QPushButton, QComboBox, QLineEdit styling
+- Custom knob graphics (rotary circles with values below)
+- Status bar showing device, sample rate, latency, CPU usage
+
+**Key Files to Generate:**
+1. Root CMakeLists.txt (JUCE + Qt)
+2. src/CMakeLists.txt
+3. src/Audio/CMakeLists.txt
+4. src/Audio/AudioEngine.h
+5. src/Audio/AudioEngine.cpp
+6. src/UI/CMakeLists.txt
+7. src/UI/MainWindow.h
+8. src/UI/MainWindow.cpp
+9. src/UI/Widgets/CustomKnob.h
+10. src/UI/Widgets/CustomKnob.cpp
+11. src/UI/Widgets/LevelMeter.h
+12. src/UI/Widgets/LevelMeter.cpp
+13. src/UI/Sections/AmpSection.h
+14. src/UI/Sections/AmpSection.cpp
+15. src/UI/Sections/CabinetSection.h
+16. src/UI/Sections/CabinetSection.cpp
+17. src/UI/Sections/EffectsSection.h
+18. src/UI/Sections/EffectsSection.cpp
+19. src/UI/Sections/MasterSection.h
+20. src/UI/Sections/MasterSection.cpp
+21. src/UI/Panels/PresetPanel.h
+22. src/UI/Panels/PresetPanel.cpp
+23. src/Shared/CMakeLists.txt
+24. src/Shared/Constants.h
+25. src/Shared/ThreadSafeBuffer.h
+26. src/Shared/Logger.h
+27. src/Main.cpp
+28. resources/CMakeLists.txt
+29. resources/style/dark_professional.qss
+30. .github/workflows/build.yml
+31. README.md
+32. BUILDING.md
+33. DEVELOPMENT.md
+34. LICENSE (MIT)
+35. CHANGELOG.md
+36. .gitignore
+
+**Audio Engine (Unchanged from Phase 1):**
+- Pass-through audio processing (no amp models yet)
+- Real-time meter updates via atomic variables
+- Lock-free communication between JUCE audio thread and Qt UI thread
+- Latency measurement and display
+
+**UI Requirements:**
+- Knobs are VISUAL ONLY (don't affect audio—Phase 2 adds amp models)
+- All sections display with proper layout (AMP → CABINET → EFFECTS → MASTER)
+- Level meters update in real-time (every 33ms)
+- Status bar updates every 500ms with device info, latency, CPU usage
+- Dark professional theme applies to all Qt widgets
+- No visual glitches, smooth scrolling, responsive UI
+- Supports responsive resize (content adapts to window size)
+
+**Build & Compilation:**
+- CMakeLists.txt auto-detects Qt5/Qt6
+- JUCE auto-downloaded or system-installed
+- Platform-specific configs (ASIO for Windows, ALSA/JACK for Linux, Core Audio for macOS)
+- Zero warnings on any platform
+- GitHub Actions CI builds Windows, Linux, macOS
+
+**Testing:**
+- Compile on Linux to verify
+- Provide build instructions
+- List any missing dependencies
+- Ready to commit to GitHub
+
+Provide:
+1. All source files organized in folder structure
+2. Summary of generated files
+3. Compilation instructions for Linux
+4. Any configuration notes
+5. Git repo initialization command
+6. Expected file count and total LOC

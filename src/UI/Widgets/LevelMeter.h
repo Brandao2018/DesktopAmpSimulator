@@ -2,18 +2,19 @@
 
 #include <QWidget>
 
-// Stereo level meter with a dB scale (-60 .. +6 dBFS), colour zones
-// (green / yellow / red) and a peak-hold marker per channel.
+// Professional stereo level meter: dB scale (-60 .. +6 dBFS), green/yellow/
+// red zones, peak-hold markers, and a latching clip indicator per channel
+// that lights when the level touches 0 dBFS (click the meter to reset).
 //
 // The UI thread feeds it values via setLevels(); it never touches the audio
 // engine directly.
 
-class MeterWidget : public QWidget
+class LevelMeter : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit MeterWidget(const QString& label, QWidget* parent = nullptr);
+    explicit LevelMeter(const QString& label, QWidget* parent = nullptr);
 
     // Values in dBFS. Called from the UI refresh timer (~30 Hz).
     void setLevels(float leftDb, float rightDb);
@@ -22,6 +23,7 @@ public:
 
 protected:
     void paintEvent(QPaintEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;   // click resets clip LEDs
 
 private:
     float dbToNormalised(float db) const;
@@ -35,4 +37,6 @@ private:
     float peakHoldR_;
     qint64 peakTimeL_;
     qint64 peakTimeR_;
+    bool clippedL_ = false;
+    bool clippedR_ = false;
 };

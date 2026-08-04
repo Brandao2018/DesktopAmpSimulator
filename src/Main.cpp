@@ -19,8 +19,8 @@ int main(int argc, char* argv[])
     QApplication::setApplicationName(QStringLiteral("DesktopAmpSimulator"));
     QApplication::setOrganizationName(QStringLiteral("AmpSim"));
 
-    // Dark theme (default).
-    QFile style(QStringLiteral(":/StyleSheet.css"));
+    // Dark professional theme (default).
+    QFile style(QStringLiteral(":/style/dark_professional.qss"));
     if (style.open(QIODevice::ReadOnly | QIODevice::Text))
         app.setStyleSheet(QString::fromUtf8(style.readAll()));
 

@@ -7,6 +7,12 @@
 
 #include <juce_audio_utils/juce_audio_utils.h>
 
+#include "DSP/AmpModel.h"
+#include "DSP/Chorus.h"
+#include "DSP/Delay.h"
+#include "DSP/Phaser.h"
+#include "DSP/PitchShifter.h"
+#include "DSP/Wah.h"
 #include "Shared/ThreadSafeBuffer.h"
 
 // Real-time audio I/O for Phase 1: opens the system audio device, passes
@@ -41,6 +47,12 @@ public:
     float getOutputRmsL() const   { return meters_.output.left.loadRms(); }
     float getOutputRmsR() const   { return meters_.output.right.loadRms(); }
 
+    // Smoothed audio-callback CPU load, 0..1 (message/UI thread only).
+    double getCpuUsage() const
+    {
+        return const_cast<juce::AudioDeviceManager&>(deviceManager).getCpuUsage();
+    }
+
     double getCurrentSampleRate() const { return meters_.sampleRate.load(std::memory_order_acquire); }
     int    getCurrentBufferSize() const { return meters_.bufferSize.load(std::memory_order_acquire); }
     float  getMeasuredLatency() const   { return meters_.latencyMs.load(std::memory_order_acquire); }
@@ -52,6 +64,14 @@ public:
     void setVolumeDb(float db) { volumeDb_.store(db, std::memory_order_release); }
     float getGainDb() const    { return gainDb_.load(std::memory_order_acquire); }
     float getVolumeDb() const  { return volumeDb_.load(std::memory_order_acquire); }
+
+    // Every effect's parameters are atomics — safe to touch from any thread.
+    ampsim::AmpModel&     ampModel() { return ampModel_; }
+    ampsim::Wah&          wah()      { return wah_; }
+    ampsim::PitchShifter& whammy()   { return whammy_; }
+    ampsim::Phaser&       phaser()   { return phaser_; }
+    ampsim::Chorus&       chorus()   { return chorus_; }
+    ampsim::Delay&        delay()    { return delay_; }
 
     // Control (message/UI thread only).
     bool start();                                   // returns false on device error
@@ -83,6 +103,15 @@ private:
 
     std::atomic<float> gainDb_   { 0.0f };
     std::atomic<float> volumeDb_ { 0.0f };
+
+    // Pedal chain, in signal order: Wah -> Whammy -> AmpModel (drive/tone)
+    // -> Phaser -> Chorus -> Delay, sitting between Gain and Volume.
+    ampsim::Wah          wah_;
+    ampsim::PitchShifter whammy_;
+    ampsim::AmpModel     ampModel_;
+    ampsim::Phaser       phaser_;
+    ampsim::Chorus       chorus_;
+    ampsim::Delay        delay_;
 
     std::atomic<bool> deviceListChanged_ { false };
 

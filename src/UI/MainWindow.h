@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QMainWindow>
+#include <QVariantMap>
 
 class QComboBox;
 class QLabel;
@@ -8,16 +9,19 @@ class QPushButton;
 class QTimer;
 
 class AudioEngine;
-class KnobWidget;
-class MeterWidget;
+class AmpSection;
+class CabinetSection;
+class EffectsSection;
+class MasterSection;
+class PresetPanel;
 
-// Main application window, styled after classic studio/pedalboard software:
-// a top toolbar (device, buffer, readouts), a "board" area holding the rack
-// meters (pedals arrive in Phase 2), and an amp panel with rotary knobs and
-// a round power switch.
+// Main window in the professional dark studio style: a slim top bar with
+// device controls and the power switch, a vertically scrolling stack of
+// sections (AMP -> CABINET -> EFFECTS -> MASTER), a preset dock on the
+// right, and a status bar reporting device / sample rate / latency / CPU.
 //
-// It reads the engine's lock-free meter atomics on a 30 Hz timer and forwards
-// user actions to the engine on the UI thread.
+// Meters refresh at ~30 Hz from the engine's lock-free atomics; the status
+// bar refreshes every 500 ms. All engine calls happen on the UI thread.
 
 class MainWindow : public QMainWindow
 {
@@ -28,7 +32,8 @@ public:
     ~MainWindow() override;
 
 private slots:
-    void updateMeters();                // timer-driven UI refresh (~30 Hz)
+    void updateMeters();                // ~30 Hz
+    void updateStatusBar();             // every 500 ms
     void onPowerToggled(bool on);
     void onDeviceSelected(int index);
     void onBufferSizeSelected(int index);
@@ -37,22 +42,27 @@ private:
     void setupUI();
     void connectSignals();
     void refreshDeviceList();
-    void showStatus(const QString& message, bool isError = false);
+    QVariantMap captureState() const;
+    void applyState(const QVariantMap& state);
+    void showStatus(const QString& message);
     void restoreWindowGeometry();
     void saveWindowGeometry();
 
     void closeEvent(QCloseEvent* event) override;
 
-    AudioEngine* audioEngine_;
-    MeterWidget* inputMeter_;
-    MeterWidget* outputMeter_;
-    QComboBox*   deviceSelector_;
-    QComboBox*   bufferSizeSelector_;
-    KnobWidget*  gainKnob_;
-    KnobWidget*  volumeKnob_;
-    QPushButton* powerBtn_;
-    QLabel*      statusLabel_;
-    QLabel*      sampleRateLabel_;
-    QLabel*      latencyLabel_;
-    QTimer*      updateTimer_;
+    AudioEngine*    audioEngine_;
+    AmpSection*     ampSection_;
+    CabinetSection* cabinetSection_;
+    EffectsSection* effectsSection_;
+    MasterSection*  masterSection_;
+    PresetPanel*    presetPanel_;
+    QComboBox*      deviceSelector_;
+    QComboBox*      bufferSizeSelector_;
+    QPushButton*    powerBtn_;
+    QLabel*         deviceStatusLabel_;
+    QLabel*         sampleRateLabel_;
+    QLabel*         latencyLabel_;
+    QLabel*         cpuLabel_;
+    QTimer*         meterTimer_;
+    QTimer*         statusTimer_;
 };

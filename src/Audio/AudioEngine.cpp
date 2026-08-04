@@ -30,6 +30,13 @@ void AudioEngine::prepareToPlay(int samplesPerBlockExpected, double sampleRate)
         for (auto& ch : io)
             ch = ampsim::kMeterFloorDb;
 
+    wah_.prepare(sampleRate);
+    whammy_.prepare(sampleRate);
+    ampModel_.prepare(sampleRate);
+    phaser_.prepare(sampleRate);
+    chorus_.prepare(sampleRate);
+    delay_.prepare(sampleRate);
+
     refreshLatencyFromDevice();
     meters_.running.store(true, std::memory_order_release);
 }
@@ -52,14 +59,20 @@ void AudioEngine::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferTo
         meter.store(smoothedPeak_[0][ch], rmsDb);
     }
 
-    // Phase 1 chain: input trim (Gain) -> pass-through -> output level (Volume).
+    // Chain: input trim (Gain) -> Wah -> Whammy -> amp model (Valve One)
+    // -> Phaser -> Chorus -> Delay -> output level (Volume).
     float* channels[ampsim::kNumChannels] = {};
     for (int ch = 0; ch < numChannels; ++ch)
         channels[ch] = buffer.getWritePointer(ch, bufferToFill.startSample);
     const float gain = ampsim::dbToGain(gainDb_.load(std::memory_order_acquire));
     ampsim::applyGain(channels, numChannels, bufferToFill.numSamples, gain);
 
-    ampsim::processPassThrough(channels, numChannels, bufferToFill.numSamples);
+    wah_.process(channels, numChannels, bufferToFill.numSamples);
+    whammy_.process(channels, numChannels, bufferToFill.numSamples);
+    ampModel_.process(channels, numChannels, bufferToFill.numSamples);
+    phaser_.process(channels, numChannels, bufferToFill.numSamples);
+    chorus_.process(channels, numChannels, bufferToFill.numSamples);
+    delay_.process(channels, numChannels, bufferToFill.numSamples);
 
     const float volume = ampsim::dbToGain(volumeDb_.load(std::memory_order_acquire));
     ampsim::applyGain(channels, numChannels, bufferToFill.numSamples, volume);

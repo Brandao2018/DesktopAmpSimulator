@@ -1,8 +1,17 @@
 target_sources(DesktopAmpSimulator PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/MainWindow.h
     ${CMAKE_CURRENT_SOURCE_DIR}/MainWindow.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/MeterWidget.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/MeterWidget.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/KnobWidget.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/KnobWidget.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/resources.qrc)
+    ${CMAKE_CURRENT_SOURCE_DIR}/Widgets/CustomKnob.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Widgets/CustomKnob.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Widgets/LevelMeter.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Widgets/LevelMeter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Sections/AmpSection.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Sections/AmpSection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Sections/CabinetSection.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Sections/CabinetSection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Sections/EffectsSection.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Sections/EffectsSection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Sections/MasterSection.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Sections/MasterSection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Panels/PresetPanel.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Panels/PresetPanel.cpp)

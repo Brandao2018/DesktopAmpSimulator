@@ -2,23 +2,26 @@
 
 #include <QWidget>
 
-// Rotary amp-style knob: cream cap on a dark bezel with a tick-mark scale,
-// like a classic guitar amplifier. Drag vertically (or scroll) to change,
-// double-click to reset to default.
+// Professional rotary knob in the dark/orange studio theme: charcoal cap,
+// orange value arc and pointer, label above and live value readout below.
+// Drag vertically (or scroll) to change, double-click to reset to default.
 
-class KnobWidget : public QWidget
+class CustomKnob : public QWidget
 {
     Q_OBJECT
 
 public:
-    KnobWidget(const QString& label, float minValue, float maxValue,
+    CustomKnob(const QString& label, float minValue, float maxValue,
                float defaultValue, const QString& unit, QWidget* parent = nullptr);
 
     float value() const { return value_; }
     void setValue(float v);
 
-    QSize sizeHint() const override { return { 84, 110 }; }
-    QSize minimumSizeHint() const override { return { 72, 100 }; }
+    // Number of decimals shown in the value readout (default 1).
+    void setDecimals(int decimals) { decimals_ = decimals; update(); }
+
+    QSize sizeHint() const override { return { 72, 92 }; }
+    QSize minimumSizeHint() const override { return { 62, 84 }; }
 
 signals:
     void valueChanged(float newValue);
@@ -39,6 +42,7 @@ private:
     float max_;
     float default_;
     float value_;
+    int decimals_ = 1;
     int dragStartY_ = 0;
     float dragStartValue_ = 0.0f;
 };
