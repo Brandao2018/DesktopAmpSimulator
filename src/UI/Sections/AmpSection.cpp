@@ -1,13 +1,14 @@
 #include "AmpSection.h"
 
 #include <QComboBox>
-#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
 #include <QVBoxLayout>
 
 #include "Audio/AudioEngine.h"
+#include "UI/AmpCatalog.h"
+#include "UI/Widgets/AmpHeadWidget.h"
 #include "UI/Widgets/CustomKnob.h"
 
 namespace
@@ -29,10 +30,11 @@ AmpSection::AmpSection(AudioEngine* engine, QWidget* parent)
 
     modelSelector_ = new QComboBox(this);
     modelSelector_->setAccessibleName(tr("Amp model"));
-    modelSelector_->addItem(tr("Fender Deluxe"), static_cast<int>(ampsim::AmpVoicing::Fender));
-    modelSelector_->addItem(tr("Marshall JCM"), static_cast<int>(ampsim::AmpVoicing::Marshall));
-    modelSelector_->addItem(tr("Mesa Rectifier"), static_cast<int>(ampsim::AmpVoicing::Mesa));
-    modelSelector_->addItem(tr("Orange Crush"), static_cast<int>(ampsim::AmpVoicing::Orange));
+    for (int i = 0; i < ampcat::kNumAmpModels; ++i)
+        modelSelector_->addItem(QStringLiteral("%1 — %2")
+                                    .arg(QLatin1String(ampcat::kAmpModels[i].maker),
+                                         QLatin1String(ampcat::kAmpModels[i].model)),
+                                i);
 
     preampTubeSelector_ = new QComboBox(this);
     preampTubeSelector_->setAccessibleName(tr("Preamp tube"));
@@ -62,47 +64,47 @@ AmpSection::AmpSection(AudioEngine* engine, QWidget* parent)
     selectorRow->addStretch();
     selectorRow->addWidget(bypassBtn_);
 
-    // --- 3x3 knob grid -------------------------------------------------------
-    gainKnob_     = new CustomKnob(tr("Gain"), -24.0f, 24.0f, 0.0f, tr("dB"), this);
-    driveKnob_    = new CustomKnob(tr("Drive"), 0.0f, 36.0f, 12.0f, tr("dB"), this);
-    bassKnob_     = new CustomKnob(tr("Bass"), -12.0f, 12.0f, 0.0f, tr("dB"), this);
-    midKnob_      = new CustomKnob(tr("Mid"), -12.0f, 12.0f, 0.0f, tr("dB"), this);
-    trebleKnob_   = new CustomKnob(tr("Treble"), -12.0f, 12.0f, 0.0f, tr("dB"), this);
-    presenceKnob_ = new CustomKnob(tr("Presence"), -12.0f, 12.0f, 0.0f, tr("dB"), this);
-    depthKnob_    = new CustomKnob(tr("Depth"), 0.0f, 100.0f, 50.0f, tr("%"), this);
-    sagKnob_      = new CustomKnob(tr("Sag"), 0.0f, 100.0f, 30.0f, tr("%"), this);
-    masterKnob_   = new CustomKnob(tr("Master"), 0.0f, 100.0f, 70.0f, tr("%"), this);
+    // --- Amp head with a single row of panel knobs ---------------------------
+    head_ = new AmpHeadWidget(this);
+
+    gainKnob_     = new CustomKnob(tr("Gain"), -24.0f, 24.0f, 0.0f, tr("dB"), head_);
+    driveKnob_    = new CustomKnob(tr("Drive"), 0.0f, 36.0f, 12.0f, tr("dB"), head_);
+    bassKnob_     = new CustomKnob(tr("Bass"), -12.0f, 12.0f, 0.0f, tr("dB"), head_);
+    midKnob_      = new CustomKnob(tr("Mid"), -12.0f, 12.0f, 0.0f, tr("dB"), head_);
+    trebleKnob_   = new CustomKnob(tr("Treble"), -12.0f, 12.0f, 0.0f, tr("dB"), head_);
+    presenceKnob_ = new CustomKnob(tr("Presence"), -12.0f, 12.0f, 0.0f, tr("dB"), head_);
+    depthKnob_    = new CustomKnob(tr("Depth"), 0.0f, 100.0f, 50.0f, tr("%"), head_);
+    sagKnob_      = new CustomKnob(tr("Sag"), 0.0f, 100.0f, 30.0f, tr("%"), head_);
+    masterKnob_   = new CustomKnob(tr("Master"), 0.0f, 100.0f, 70.0f, tr("%"), head_);
 
     presenceKnob_->setToolTip(tr(kPhase3Tip));
     depthKnob_->setToolTip(tr(kPhase3Tip));
     sagKnob_->setToolTip(tr(kPhase3Tip));
     masterKnob_->setToolTip(tr(kPhase3Tip));
 
-    auto* grid = new QGridLayout();
-    grid->setHorizontalSpacing(10);
-    grid->setVerticalSpacing(4);
     CustomKnob* knobs[9] = { gainKnob_, driveKnob_, bassKnob_,
                              midKnob_, trebleKnob_, presenceKnob_,
                              depthKnob_, sagKnob_, masterKnob_ };
-    for (int i = 0; i < 9; ++i)
-        grid->addWidget(knobs[i], i / 3, i % 3, Qt::AlignCenter);
-
-    auto* gridRow = new QHBoxLayout();
-    gridRow->addStretch();
-    gridRow->addLayout(grid);
-    gridRow->addStretch();
+    for (auto* knob : knobs)
+    {
+        head_->knobRow()->addStretch(1);
+        head_->knobRow()->addWidget(knob);
+    }
+    head_->knobRow()->addStretch(1);
 
     layout->addLayout(selectorRow);
-    layout->addLayout(gridRow);
+    layout->addWidget(head_);
 
     // --- Wiring --------------------------------------------------------------
     connect(modelSelector_, qOverload<int>(&QComboBox::activated), this, [this](int index) {
-        engine_->ampModel().setVoicing(
-            static_cast<ampsim::AmpVoicing>(modelSelector_->itemData(index).toInt()));
+        const int catalogIndex = modelSelector_->itemData(index).toInt();
+        applyModelVisuals(catalogIndex);
+        engine_->ampModel().setVoicing(ampcat::kAmpModels[catalogIndex].voicing);
     });
     connect(bypassBtn_, &QPushButton::toggled, this, [this](bool on) {
         engine_->ampModel().setEnabled(on);
         bypassBtn_->setText(on ? tr("ACTIVE") : tr("BYPASS"));
+        head_->setLampOn(on);
     });
     connect(gainKnob_, &CustomKnob::valueChanged,
             this, [this](float db) { engine_->setGainDb(db); });
@@ -115,7 +117,23 @@ AmpSection::AmpSection(AudioEngine* engine, QWidget* parent)
     connect(trebleKnob_, &CustomKnob::valueChanged,
             this, [this](float db) { engine_->ampModel().setTrebleDb(db); });
 
+    applyModelVisuals(0);
     pushAllToEngine();
+}
+
+void AmpSection::applyModelVisuals(int catalogIndex)
+{
+    const auto& spec = ampcat::kAmpModels[catalogIndex];
+    head_->setSpec(&spec);
+
+    CustomKnob* knobs[9] = { gainKnob_, driveKnob_, bassKnob_,
+                             midKnob_, trebleKnob_, presenceKnob_,
+                             depthKnob_, sagKnob_, masterKnob_ };
+    for (auto* knob : knobs)
+    {
+        knob->setKnobStyle(spec.knobStyle);
+        knob->setTextColors(spec.panelText, spec.panelText);
+    }
 }
 
 void AmpSection::pushAllToEngine()
@@ -126,7 +144,7 @@ void AmpSection::pushAllToEngine()
     engine_->ampModel().setMidDb(midKnob_->value());
     engine_->ampModel().setTrebleDb(trebleKnob_->value());
     engine_->ampModel().setVoicing(
-        static_cast<ampsim::AmpVoicing>(modelSelector_->currentData().toInt()));
+        ampcat::kAmpModels[modelSelector_->currentData().toInt()].voicing);
     engine_->ampModel().setEnabled(bypassBtn_->isChecked());
 }
 
@@ -151,10 +169,14 @@ QVariantMap AmpSection::captureState() const
 
 void AmpSection::applyState(const QVariantMap& state)
 {
-    modelSelector_->setCurrentIndex(state.value(QStringLiteral("model"), 0).toInt());
+    const int model = qBound(0, state.value(QStringLiteral("model"), 0).toInt(),
+                             ampcat::kNumAmpModels - 1);
+    modelSelector_->setCurrentIndex(model);
+    applyModelVisuals(modelSelector_->currentData().toInt());
     preampTubeSelector_->setCurrentIndex(state.value(QStringLiteral("preampTube"), 0).toInt());
     powerTubeSelector_->setCurrentIndex(state.value(QStringLiteral("powerTube"), 0).toInt());
     bypassBtn_->setChecked(state.value(QStringLiteral("active"), true).toBool());
+    head_->setLampOn(bypassBtn_->isChecked());
     gainKnob_->setValue(state.value(QStringLiteral("gain"), 0.0f).toFloat());
     driveKnob_->setValue(state.value(QStringLiteral("drive"), 12.0f).toFloat());
     bassKnob_->setValue(state.value(QStringLiteral("bass"), 0.0f).toFloat());

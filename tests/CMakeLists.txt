@@ -9,10 +9,20 @@ add_executable(AmpSimTests
     AudioEngineTests.cpp
     MeterTests.cpp
     AmpModelTests.cpp
-    EffectsTests.cpp)
+    EffectsTests.cpp
+    CatalogTests.cpp)
 
 target_include_directories(AmpSimTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(AmpSimTests PRIVATE Catch2::Catch2WithMain)
+
+# CatalogTests.cpp pulls in UI/AmpCatalog.h and UI/PedalCatalog.h for their
+# QColor data tables. Both are header-only, QObject-free, so linking Qt's
+# Gui module (not the full Widgets stack, and no moc/QApplication) is enough.
+if(TARGET Qt6::Widgets)
+    target_link_libraries(AmpSimTests PRIVATE Qt6::Gui)
+else()
+    target_link_libraries(AmpSimTests PRIVATE Qt5::Gui)
+endif()
 
 if(MSVC)
     target_compile_options(AmpSimTests PRIVATE /W4 /WX /permissive-)

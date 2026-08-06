@@ -1,9 +1,13 @@
 #pragma once
 
+#include <QColor>
 #include <QWidget>
 
-// Professional rotary knob in the dark/orange studio theme: charcoal cap,
-// orange value arc and pointer, label above and live value readout below.
+#include "UI/Widgets/KnobStyle.h"
+
+// Rotary knob with several skeuomorphic hardware looks. The default Studio
+// style is the dark/orange arc knob used on the rack sections; the amp
+// faceplates and stompboxes pick period-correct hardware instead.
 // Drag vertically (or scroll) to change, double-click to reset to default.
 
 class CustomKnob : public QWidget
@@ -20,8 +24,14 @@ public:
     // Number of decimals shown in the value readout (default 1).
     void setDecimals(int decimals) { decimals_ = decimals; update(); }
 
-    QSize sizeHint() const override { return { 72, 92 }; }
-    QSize minimumSizeHint() const override { return { 62, 84 }; }
+    void setKnobStyle(KnobStyle style);
+
+    // Colors for the label above and the value readout below, so text stays
+    // readable on cream/gold/steel panels as well as on dark ones.
+    void setTextColors(const QColor& label, const QColor& valueText);
+
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
 
 signals:
     void valueChanged(float newValue);
@@ -36,6 +46,14 @@ protected:
 private:
     float normalised() const;
 
+    void paintStudio(QPainter& p, const QPointF& centre, qreal radius) const;
+    void paintSkirted(QPainter& p, const QPointF& centre, qreal radius) const;
+    void paintChickenHead(QPainter& p, const QPointF& centre, qreal radius,
+                          const QColor& body, const QColor& nose) const;
+    void paintKnurled(QPainter& p, const QPointF& centre, qreal radius,
+                      bool gold) const;
+    void paintStomp(QPainter& p, const QPointF& centre, qreal radius) const;
+
     QString label_;
     QString unit_;
     float min_;
@@ -45,4 +63,8 @@ private:
     int decimals_ = 1;
     int dragStartY_ = 0;
     float dragStartValue_ = 0.0f;
+
+    KnobStyle style_ = KnobStyle::Studio;
+    QColor labelColor_;
+    QColor valueColor_;
 };

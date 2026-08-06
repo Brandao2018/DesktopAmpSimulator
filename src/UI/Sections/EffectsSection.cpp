@@ -1,7 +1,6 @@
 #include "EffectsSection.h"
 
 #include <QComboBox>
-#include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
@@ -10,15 +9,17 @@
 #include <QVBoxLayout>
 
 #include "Audio/AudioEngine.h"
+#include "UI/PedalCatalog.h"
 #include "UI/Widgets/CustomKnob.h"
+#include "UI/Widgets/StompboxWidget.h"
 
 EffectsSection::EffectsSection(AudioEngine* engine, QWidget* parent)
-    : QGroupBox(tr("EFFECTS"), parent),
+    : QGroupBox(tr("PEDALBOARD"), parent),
       engine_(engine)
 {
     auto* layout = new QHBoxLayout(this);
     layout->setContentsMargins(14, 22, 14, 10);
-    layout->setSpacing(10);
+    layout->setSpacing(12);
 
     for (int i = 0; i < kNumSlots; ++i)
         layout->addWidget(buildSlot(i), 1);
@@ -29,48 +30,55 @@ EffectsSection::EffectsSection(AudioEngine* engine, QWidget* parent)
     slots_[1].type->setCurrentIndex(Whammy);
     slots_[2].type->setCurrentIndex(Phaser);
     slots_[3].type->setCurrentIndex(Delay);
-    for (auto& slot : slots_)
-        slot.pages->setCurrentIndex(slot.type->currentIndex());
+    for (int i = 0; i < kNumSlots; ++i)
+    {
+        slots_[i].pages->setCurrentIndex(slots_[i].type->currentIndex());
+        applyPedalVisuals(i);
+    }
 
     applyToEngine();
 }
 
 QWidget* EffectsSection::buildSlot(int index)
 {
-    auto* frame = new QFrame(this);
-    frame->setObjectName(QStringLiteral("fxSlot"));
-    auto* slotLayout = new QVBoxLayout(frame);
-    slotLayout->setContentsMargins(8, 6, 8, 6);
-    slotLayout->setSpacing(4);
-
-    auto* title = new QLabel(tr("FX %1").arg(index + 1), frame);
-    title->setObjectName(QStringLiteral("slotTitle"));
-    title->setAlignment(Qt::AlignCenter);
-
     Slot& slot = slots_[index];
 
-    slot.type = new QComboBox(frame);
+    auto* pedal = new StompboxWidget(this);
+    slot.pedal = pedal;
+    auto* slotLayout = new QVBoxLayout(pedal);
+    slotLayout->setContentsMargins(12, 10, 12, 12);
+    slotLayout->setSpacing(4);
+
+    auto* title = new QLabel(tr("FX %1").arg(index + 1), pedal);
+    title->setObjectName(QStringLiteral("slotTitle"));
+    title->setAlignment(Qt::AlignCenter);
+    title->setAttribute(Qt::WA_TransparentForMouseEvents);
+
+    slot.type = new QComboBox(pedal);
     slot.type->setAccessibleName(tr("Effect %1 type").arg(index + 1));
     slot.type->addItems({ tr("None"), tr("Wah"), tr("Whammy"), tr("Phaser"),
                           tr("Chorus"), tr("Delay") });
 
-    slot.active = new QPushButton(tr("BYPASS"), frame);
-    slot.active->setObjectName(QStringLiteral("bypassBtn"));
-    slot.active->setCheckable(true);
+    slot.active = pedal->footswitch();
     slot.active->setChecked(false);
     slot.active->setAccessibleName(tr("Effect %1 bypass").arg(index + 1));
+    slot.active->setToolTip(tr("Stomp to engage / bypass"));
 
     // One page of knobs per effect type (page index == combo index).
-    slot.pages = new QStackedWidget(frame);
+    slot.pages = new QStackedWidget(pedal);
 
-    auto makePage = [frame, &slot](std::initializer_list<CustomKnob*> knobs) {
-        auto* page = new QWidget(frame);
+    auto makePage = [pedal, &slot](std::initializer_list<CustomKnob*> knobs) {
+        auto* page = new QWidget(pedal);
+        page->setAttribute(Qt::WA_TranslucentBackground);
         auto* row = new QHBoxLayout(page);
         row->setContentsMargins(0, 0, 0, 0);
         row->setSpacing(2);
         row->addStretch();
         for (auto* knob : knobs)
+        {
+            knob->setKnobStyle(KnobStyle::Stomp);
             row->addWidget(knob);
+        }
         row->addStretch();
         slot.pages->addWidget(page);
     };
@@ -78,34 +86,40 @@ QWidget* EffectsSection::buildSlot(int index)
     // Page 0: None.
     makePage({});
 
-    slot.wahPosition = new CustomKnob(tr("Position"), 0.0f, 100.0f, 50.0f, tr("%"), frame);
+    slot.wahPosition = new CustomKnob(tr("Position"), 0.0f, 100.0f, 50.0f, tr("%"), pedal);
     makePage({ slot.wahPosition });
 
-    slot.whammyPitch = new CustomKnob(tr("Pitch"), -12.0f, 24.0f, 0.0f, tr("st"), frame);
+    slot.whammyPitch = new CustomKnob(tr("Pitch"), -12.0f, 24.0f, 0.0f, tr("st"), pedal);
     makePage({ slot.whammyPitch });
 
-    slot.phaserRate = new CustomKnob(tr("Rate"), 0.1f, 6.0f, 0.8f, tr("Hz"), frame);
+    slot.phaserRate = new CustomKnob(tr("Rate"), 0.1f, 6.0f, 0.8f, tr("Hz"), pedal);
     makePage({ slot.phaserRate });
 
-    slot.chorusRate = new CustomKnob(tr("Rate"), 0.1f, 5.0f, 0.8f, tr("Hz"), frame);
-    slot.chorusDepth = new CustomKnob(tr("Depth"), 0.0f, 100.0f, 50.0f, tr("%"), frame);
+    slot.chorusRate = new CustomKnob(tr("Rate"), 0.1f, 5.0f, 0.8f, tr("Hz"), pedal);
+    slot.chorusDepth = new CustomKnob(tr("Depth"), 0.0f, 100.0f, 50.0f, tr("%"), pedal);
     makePage({ slot.chorusRate, slot.chorusDepth });
 
-    slot.delayTime = new CustomKnob(tr("Time"), 50.0f, 800.0f, 350.0f, tr("ms"), frame);
+    slot.delayTime = new CustomKnob(tr("Time"), 50.0f, 800.0f, 350.0f, tr("ms"), pedal);
     slot.delayTime->setDecimals(0);
-    slot.delayFeedback = new CustomKnob(tr("Fdbk"), 0.0f, 90.0f, 35.0f, tr("%"), frame);
-    slot.delayMix = new CustomKnob(tr("Mix"), 0.0f, 100.0f, 30.0f, tr("%"), frame);
+    slot.delayFeedback = new CustomKnob(tr("Fdbk"), 0.0f, 90.0f, 35.0f, tr("%"), pedal);
+    slot.delayMix = new CustomKnob(tr("Mix"), 0.0f, 100.0f, 30.0f, tr("%"), pedal);
     makePage({ slot.delayTime, slot.delayFeedback, slot.delayMix });
 
     slotLayout->addWidget(title);
     slotLayout->addWidget(slot.type);
-    slotLayout->addWidget(slot.pages, 1);
-    slotLayout->addWidget(slot.active);
+    slotLayout->addWidget(slot.pages);
+    // Room for the painted name plate and LED, then the footswitch.
+    slotLayout->addStretch(1);
+    auto* switchRow = new QHBoxLayout();
+    switchRow->addStretch();
+    switchRow->addWidget(slot.active);
+    switchRow->addStretch();
+    slotLayout->addLayout(switchRow);
 
     connect(slot.type, qOverload<int>(&QComboBox::activated),
             this, [this, index](int) { onTypeSelected(index); });
     connect(slot.active, &QPushButton::toggled, this, [this, index](bool on) {
-        slots_[index].active->setText(on ? tr("ACTIVE") : tr("BYPASS"));
+        slots_[index].pedal->setEngaged(on);
         applyToEngine();
     });
     for (auto* knob : { slot.wahPosition, slot.whammyPitch, slot.phaserRate,
@@ -113,7 +127,21 @@ QWidget* EffectsSection::buildSlot(int index)
                         slot.delayTime, slot.delayFeedback, slot.delayMix })
         connect(knob, &CustomKnob::valueChanged, this, [this](float) { applyToEngine(); });
 
-    return frame;
+    return pedal;
+}
+
+void EffectsSection::applyPedalVisuals(int slotIndex)
+{
+    Slot& slot = slots_[slotIndex];
+    const int type = slot.type->currentIndex();
+    slot.pedal->setPedalType(type);
+    slot.pedal->setEngaged(slot.active->isChecked());
+
+    const auto& style = pedalcat::styleForType(type);
+    for (auto* knob : { slot.wahPosition, slot.whammyPitch, slot.phaserRate,
+                        slot.chorusRate, slot.chorusDepth,
+                        slot.delayTime, slot.delayFeedback, slot.delayMix })
+        knob->setTextColors(style.text, style.text);
 }
 
 void EffectsSection::onTypeSelected(int slotIndex)
@@ -129,9 +157,11 @@ void EffectsSection::onTypeSelected(int slotIndex)
                 const QSignalBlocker blocker(slots_[i].type);
                 slots_[i].type->setCurrentIndex(None);
                 slots_[i].pages->setCurrentIndex(None);
+                applyPedalVisuals(i);
             }
 
     slots_[slotIndex].pages->setCurrentIndex(chosen);
+    applyPedalVisuals(slotIndex);
     applyToEngine();
 }
 
@@ -208,9 +238,8 @@ void EffectsSection::applyState(const QVariantMap& state)
         const QSignalBlocker activeBlocker(slot.active);
         slot.type->setCurrentIndex(state.value(prefix + QStringLiteral("type"), None).toInt());
         slot.pages->setCurrentIndex(slot.type->currentIndex());
-        const bool active = state.value(prefix + QStringLiteral("active"), false).toBool();
-        slot.active->setChecked(active);
-        slot.active->setText(active ? tr("ACTIVE") : tr("BYPASS"));
+        slot.active->setChecked(state.value(prefix + QStringLiteral("active"), false).toBool());
+        applyPedalVisuals(i);
 
         slot.wahPosition->setValue(state.value(prefix + QStringLiteral("wahPosition"), 50.0f).toFloat());
         slot.whammyPitch->setValue(state.value(prefix + QStringLiteral("whammyPitch"), 0.0f).toFloat());

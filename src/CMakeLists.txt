@@ -46,6 +46,8 @@ set_source_files_properties(
     Audio/AudioEngine.cpp
     UI/MainWindow.cpp
     UI/Widgets/CustomKnob.cpp
+    UI/Widgets/AmpHeadWidget.cpp
+    UI/Widgets/StompboxWidget.cpp
     UI/Widgets/LevelMeter.cpp
     UI/Sections/AmpSection.cpp
     UI/Sections/CabinetSection.cpp

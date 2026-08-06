@@ -9,10 +9,12 @@ class QStackedWidget;
 
 class AudioEngine;
 class CustomKnob;
+class StompboxWidget;
 
-// EFFECTS section: four effect slots. Each slot picks one of the real DSP
-// effects (Wah, Whammy, Phaser, Chorus, Delay) from a type dropdown, has
-// its own ACTIVE toggle, and shows that effect's parameter knobs.
+// EFFECTS section: four pedalboard slots drawn as stompboxes. Each slot
+// picks one of the real DSP effects (Wah, Whammy, Phaser, Chorus, Delay)
+// from a type dropdown, has a footswitch as its ACTIVE toggle (with a
+// status LED), and shows that effect's parameter knobs on the enclosure.
 //
 // The DSP processing order is fixed (Wah -> Whammy -> amp -> Phaser ->
 // Chorus -> Delay, see AudioEngine); the slots only choose which effects
@@ -38,6 +40,7 @@ private:
 
     struct Slot
     {
+        StompboxWidget* pedal;
         QComboBox*      type;
         QPushButton*    active;
         QStackedWidget* pages;
@@ -52,6 +55,7 @@ private:
     };
 
     QWidget* buildSlot(int index);
+    void applyPedalVisuals(int slotIndex);
     void onTypeSelected(int slotIndex);
     void applyToEngine();
 

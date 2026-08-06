@@ -1,8 +1,15 @@
 target_sources(DesktopAmpSimulator PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/MainWindow.h
     ${CMAKE_CURRENT_SOURCE_DIR}/MainWindow.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/AmpCatalog.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/PedalCatalog.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Widgets/KnobStyle.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Widgets/CustomKnob.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Widgets/CustomKnob.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Widgets/AmpHeadWidget.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Widgets/AmpHeadWidget.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Widgets/StompboxWidget.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Widgets/StompboxWidget.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Widgets/LevelMeter.h
     ${CMAKE_CURRENT_SOURCE_DIR}/Widgets/LevelMeter.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Sections/AmpSection.h
