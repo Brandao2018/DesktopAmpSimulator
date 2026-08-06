@@ -1,0 +1,4 @@
+// Windows resource script: embeds the app icon into DesktopAmpSimulator.exe
+// so it shows in Explorer, the taskbar, and Alt-Tab even before the window
+// (and its runtime QIcon, set from icons/app_icon.png) has been created.
+IDI_ICON1 ICON "icons/app_icon.ico"

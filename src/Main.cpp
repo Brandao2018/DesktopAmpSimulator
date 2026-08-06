@@ -1,5 +1,6 @@
 #include <QApplication>
 #include <QFile>
+#include <QIcon>
 #include <QTimer>
 
 #include <juce_events/juce_events.h>
@@ -18,6 +19,7 @@ int main(int argc, char* argv[])
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("DesktopAmpSimulator"));
     QApplication::setOrganizationName(QStringLiteral("AmpSim"));
+    QApplication::setWindowIcon(QIcon(QStringLiteral(":/icons/app_icon.png")));
 
     // Dark professional theme (default).
     QFile style(QStringLiteral(":/style/dark_professional.qss"));

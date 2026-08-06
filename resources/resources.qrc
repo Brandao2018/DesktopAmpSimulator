@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file alias="style/dark_professional.qss">style/dark_professional.qss</file>
+        <file alias="icons/app_icon.png">icons/app_icon.png</file>
     </qresource>
 </RCC>
